@@ -1,1 +1,699 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+    <title>Фотогалерея</title>
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100%;
+        }
+
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+
+            background: #111;
+            color: white;
+
+            padding: 30px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            margin: 0;
+
+            font-size: 42px;
+        }
+
+        #refreshButton {
+            border: none;
+
+            padding: 14px 24px;
+
+            border-radius: 12px;
+
+            background: white;
+            color: #111;
+
+            font-size: 18px;
+            font-weight: bold;
+
+            cursor: pointer;
+        }
+
+        #refreshButton:hover {
+            background: #ddd;
+        }
+
+        #status {
+            margin-bottom: 25px;
+
+            color: #aaa;
+
+            font-size: 18px;
+        }
+
+        .gallery {
+            display: grid;
+
+            grid-template-columns:
+                repeat(auto-fill, minmax(280px, 1fr));
+
+            gap: 20px;
+        }
+
+        .photo {
+            position: relative;
+
+            aspect-ratio: 4 / 3;
+
+            overflow: hidden;
+
+            border-radius: 16px;
+
+            background: #222;
+
+            cursor: pointer;
+
+            box-shadow:
+                0 8px 30px rgba(0,0,0,0.4);
+        }
+
+        .photo img {
+            width: 100%;
+            height: 100%;
+
+            object-fit: cover;
+
+            display: block;
+
+            transition:
+                transform 0.3s ease;
+        }
+
+        .photo:hover img {
+            transform: scale(1.04);
+        }
+
+        .photo-name {
+            position: absolute;
+
+            left: 0;
+            right: 0;
+            bottom: 0;
+
+            padding: 12px;
+
+            background:
+                linear-gradient(
+                    transparent,
+                    rgba(0,0,0,0.8)
+                );
+
+            font-size: 16px;
+
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .loading {
+            padding: 60px 20px;
+
+            text-align: center;
+
+            font-size: 24px;
+
+            color: #aaa;
+        }
+
+        .error {
+            padding: 30px;
+
+            border-radius: 15px;
+
+            background: #351919;
+
+            color: #ffb0b0;
+
+            font-size: 18px;
+
+            line-height: 1.5;
+        }
+
+
+        /* =====================================
+           FULLSCREEN
+           ===================================== */
+
+        .viewer {
+            position: fixed;
+
+            inset: 0;
+
+            z-index: 100;
+
+            display: none;
+
+            align-items: center;
+            justify-content: center;
+
+            padding: 30px;
+
+            background:
+                rgba(0,0,0,0.95);
+        }
+
+        .viewer.open {
+            display: flex;
+        }
+
+        .viewer img {
+            max-width: 95vw;
+            max-height: 90vh;
+
+            object-fit: contain;
+        }
+
+        .close {
+            position: absolute;
+
+            top: 25px;
+            right: 30px;
+
+            width: 55px;
+            height: 55px;
+
+            border: none;
+
+            border-radius: 50%;
+
+            background: rgba(255,255,255,0.15);
+
+            color: white;
+
+            font-size: 32px;
+
+            cursor: pointer;
+        }
+
+        .close:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+
+        /* =====================================
+           4K
+           ===================================== */
+
+        @media (min-width: 2500px) {
+
+            body {
+                padding: 60px;
+            }
+
+            h1 {
+                font-size: 64px;
+            }
+
+            .gallery {
+                grid-template-columns:
+                    repeat(auto-fill, minmax(420px, 1fr));
+
+                gap: 30px;
+            }
+
+            #status {
+                font-size: 24px;
+            }
+
+        }
+
+
+        /* =====================================
+           MOBILE
+           ===================================== */
+
+        @media (max-width: 600px) {
+
+            body {
+                padding: 15px;
+            }
+
+            header {
+                align-items: flex-start;
+
+                gap: 15px;
+            }
+
+            h1 {
+                font-size: 28px;
+            }
+
+            #refreshButton {
+                padding: 10px 14px;
+
+                font-size: 14px;
+            }
+
+            .gallery {
+                grid-template-columns:
+                    repeat(2, 1fr);
+
+                gap: 10px;
+            }
+
+            .photo {
+                border-radius: 10px;
+            }
+
+        }
+
+    </style>
+</head>
+
+<body>
+
+
+<header>
+
+    <h1>
+        📷 Фотогалерея
+    </h1>
+
+    <button
+        id="refreshButton"
+        onclick="loadPhotos()"
+    >
+        ↻ Обновить
+    </button>
+
+</header>
+
+
+<div id="status">
+    Загружаем фотографии...
+</div>
+
+
+<div
+    id="gallery"
+    class="gallery"
+>
+</div>
+
+
+<div
+    id="viewer"
+    class="viewer"
+    onclick="closeViewer(event)"
+>
+
+    <button
+        class="close"
+        onclick="closeViewer()"
+    >
+        ×
+    </button>
+
+    <img
+        id="viewerImage"
+        src=""
+        alt=""
+    >
+
+</div>
+
+
+<script>
+
+
+/* ==========================================
+   НАСТРОЙКИ
+   ========================================== */
+
+
+/*
+ * ВСТАВЬ СЮДА СВОЙ API KEY
+ *
+ * Например:
+ *
+ * const API_KEY =
+ * "AIzaSyXXXXXXXXXXXXXXXXXXXXXXXX";
+ */
+
+const API_KEY =
+    "AIzaSyBrRHXzbSixRu_aXcUnwKQV5GaRw1lm7-Q";
+
+
+/*
+ * ID папки Google Drive
+ *
+ * Это твоя папка "ЩИТПОСТ"
+ */
+
+const FOLDER_ID =
+    "19KLh4VAK9kNxQ6fEIFyjGKw3v17le7Lw";
+
+
+/* ==========================================
+   ЗАГРУЗКА ФОТОГРАФИЙ
+   ========================================== */
+
+
+async function loadPhotos() {
+
+    const gallery =
+        document.getElementById("gallery");
+
+    const status =
+        document.getElementById("status");
+
+
+    gallery.innerHTML = "";
+
+    status.textContent =
+        "Загружаем фотографии...";
+
+
+    try {
+
+        /*
+         * Получаем файлы только из
+         * нужной папки.
+         */
+
+        const query =
+            `'${FOLDER_ID}' in parents
+            and trashed = false
+            and mimeType contains 'image/'`;
+
+
+        const url =
+            "https://www.googleapis.com/drive/v3/files"
+            + "?q=" + encodeURIComponent(query)
+            + "&orderBy=" + encodeURIComponent("createdTime desc")
+            + "&pageSize=100"
+            + "&fields=" + encodeURIComponent(
+                "files(id,name,mimeType,webContentLink,webViewLink,createdTime)"
+            )
+            + "&key=" + encodeURIComponent(API_KEY);
+
+
+        const response =
+            await fetch(url);
+
+
+        if (!response.ok) {
+
+            const errorText =
+                await response.text();
+
+            throw new Error(
+                "Google Drive API: "
+                + response.status
+                + " "
+                + errorText
+            );
+        }
+
+
+        const data =
+            await response.json();
+
+
+        const files =
+            data.files || [];
+
+
+        if (files.length === 0) {
+
+            status.textContent =
+                "В папке пока нет фотографий.";
+
+            return;
+        }
+
+
+        status.textContent =
+            `Найдено фотографий: ${files.length}`;
+
+
+        /*
+         * Создаём карточки.
+         */
+
+        for (const file of files) {
+
+            const card =
+                document.createElement("div");
+
+
+            card.className =
+                "photo";
+
+
+            /*
+             * Используем Google Drive preview
+             * через iframe-like viewer URL
+             * как источник изображения.
+             */
+
+            const imageUrl =
+                `https://drive.google.com/thumbnail?id=${file.id}&sz=w1200`;
+
+
+            const img =
+                document.createElement("img");
+
+
+            img.src =
+                imageUrl;
+
+
+            img.alt =
+                file.name;
+
+
+            img.loading =
+                "lazy";
+
+
+            img.onerror =
+                function () {
+
+                    /*
+                     * Если thumbnail не загрузился,
+                     * открываем файл через Drive.
+                     */
+
+                    this.style.display =
+                        "none";
+                };
+
+
+            card.appendChild(img);
+
+
+            const name =
+                document.createElement("div");
+
+
+            name.className =
+                "photo-name";
+
+
+            name.textContent =
+                file.name;
+
+
+            card.appendChild(name);
+
+
+            card.onclick =
+                function () {
+
+                    openViewer(
+                        imageUrl,
+                        file.name
+                    );
+                };
+
+
+            gallery.appendChild(card);
+        }
+
+
+    } catch (error) {
+
+        console.error(error);
+
+
+        status.textContent =
+            "Ошибка загрузки";
+
+
+        gallery.innerHTML = `
+
+            <div class="error">
+
+                <strong>
+                    Не удалось загрузить фотографии.
+                </strong>
+
+                <br><br>
+
+                ${escapeHtml(error.message)}
+
+                <br><br>
+
+                Проверь:
+
+                <ul>
+                    <li>
+                        API key указан правильно
+                    </li>
+
+                    <li>
+                        Google Drive API включён
+                    </li>
+
+                    <li>
+                        API key разрешён для
+                        Google Drive API
+                    </li>
+
+                    <li>
+                        папка доступна по ссылке
+                    </li>
+                </ul>
+
+            </div>
+
+        `;
+    }
+}
+
+
+/* ==========================================
+   FULLSCREEN
+   ========================================== */
+
+
+function openViewer(
+    imageUrl,
+    fileName
+) {
+
+    const viewer =
+        document.getElementById("viewer");
+
+
+    const image =
+        document.getElementById("viewerImage");
+
+
+    image.src =
+        imageUrl;
+
+
+    image.alt =
+        fileName;
+
+
+    viewer.classList.add("open");
+}
+
+
+function closeViewer(event) {
+
+    /*
+     * Если кликнули именно по фону,
+     * закрываем.
+     */
+
+    if (
+        event &&
+        event.target &&
+        event.target.id !== "viewer"
+    ) {
+        return;
+    }
+
+
+    document
+        .getElementById("viewer")
+        .classList.remove("open");
+}
+
+
+/* ==========================================
+   ESC
+   ========================================== */
+
+
+document.addEventListener(
+    "keydown",
+    function(event) {
+
+        if (
+            event.key === "Escape"
+        ) {
+
+            document
+                .getElementById("viewer")
+                .classList.remove("open");
+        }
+
+    }
+);
+
+
+/* ==========================================
+   HTML ESCAPE
+   ========================================== */
+
+
+function escapeHtml(text) {
+
+    const div =
+        document.createElement("div");
+
+
+    div.textContent =
+        text;
+
+
+    return div.innerHTML;
+}
+
+
+/* ==========================================
+   ЗАПУСК
+   ========================================== */
+
+
+loadPhotos();
+
+
+</script>
+
+</body>
+</html>
